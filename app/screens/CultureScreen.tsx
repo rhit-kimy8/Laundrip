@@ -1,5 +1,5 @@
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import CultureCard from '../components/CultureCard';
+import CultureCard from '../../components/CultureCard';
 
 const CULTURE_DATA = [
   { id: 1, name: '광장시장', category: '전통시장', distance: '350m', walkTime: '도보 5분', description: '100년 전통의 서울 대표 전통시장. 빈대떡, 마약김밥 등 다양한 먹거리가 유명합니다.' },

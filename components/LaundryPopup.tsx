@@ -38,8 +38,18 @@ export default function LaundryPopup({ shop, visible, onClose, onStartWash }: La
             </View>
           </View>
 
-          <TouchableOpacity style={styles.startButton} onPress={onStartWash}>
-            <Text style={styles.startButtonText}>이곳에서 세탁 시작하기</Text>
+          <TouchableOpacity
+            style={[
+              styles.startButton,
+              (shop.washer === 0 && shop.dryer === 0) && styles.disabledButton
+              ]}
+              onPress={(shop.washer === 0 && shop.dryer === 0) ? undefined : onStartWash}
+              >
+            <Text style={styles.startButtonText}>
+              {(shop.washer === 0 && shop.dryer === 0)
+              ? '❌ 사용 가능한 기기 없음'
+              : '이곳에서 세탁/건조 시작하기'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -118,5 +128,8 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#888',
     fontSize: 14,
+  },
+  disabledButton: {
+  backgroundColor: '#444',
   },
 });

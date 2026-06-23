@@ -3,20 +3,54 @@ import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 
 interface TimePickerModalProps {
   visible: boolean;
-  onConfirm: (minutes: number) => void;
+  onConfirm: (minutes: number, type: string) => void;
   onClose: () => void;
 }
 
 export default function TimePickerModal({ visible, onConfirm, onClose }: TimePickerModalProps) {
   const [selectedMinutes, setSelectedMinutes] = useState(40);
+  const [selectedType, setSelectedType] = useState<'세탁기' | '건조기'>('세탁기');
   const minuteOptions = [20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90];
 
   return (
     <Modal transparent visible={visible} animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.popup}>
-          <Text style={styles.title}>세탁 시간을 선택하세요</Text>
-          <Text style={styles.subtitle}>세탁기에 표시된 남은 시간을 입력해주세요</Text>
+          <Text style={styles.title}>세탁 정보를 선택하세요</Text>
+          <Text style={styles.subtitle}>기기 종류와 남은 시간을 입력해주세요</Text>
+
+          {/* 세탁기 / 건조기 선택 */}
+          <View style={styles.typeRow}>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                selectedType === '세탁기' && styles.typeButtonSelected,
+              ]}
+              onPress={() => setSelectedType('세탁기')}
+            >
+              <Text style={styles.typeIcon}>👕</Text>
+              <Text style={[
+                styles.typeText,
+                selectedType === '세탁기' && styles.typeTextSelected,
+              ]}>세탁기</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                selectedType === '건조기' && styles.typeButtonSelected,
+              ]}
+              onPress={() => setSelectedType('건조기')}
+            >
+              <Text style={styles.typeIcon}>💨</Text>
+              <Text style={[
+                styles.typeText,
+                selectedType === '건조기' && styles.typeTextSelected,
+              ]}>건조기</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.timeLabel}>⏱️ 사용 시간 선택</Text>
 
           <ScrollView
             style={styles.scroll}
@@ -43,9 +77,11 @@ export default function TimePickerModal({ visible, onConfirm, onClose }: TimePic
 
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={() => onConfirm(selectedMinutes)}
+            onPress={() => onConfirm(selectedMinutes, selectedType)}
           >
-            <Text style={styles.confirmButtonText}>확인</Text>
+            <Text style={styles.confirmButtonText}>
+              {selectedType} {selectedMinutes}분 시작하기
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -68,7 +104,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    maxHeight: '70%',
+    maxHeight: '80%',
   },
   title: {
     fontSize: 18,
@@ -80,6 +116,42 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 13,
     marginBottom: 20,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  typeButton: {
+    flex: 1,
+    backgroundColor: '#2a2a3e',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  typeButtonSelected: {
+    borderColor: '#4FC3F7',
+    backgroundColor: '#1a2a3a',
+  },
+  typeIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  typeText: {
+    color: '#888',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  typeTextSelected: {
+    color: '#4FC3F7',
+  },
+  timeLabel: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginBottom: 12,
   },
   scroll: {
     maxHeight: 200,
