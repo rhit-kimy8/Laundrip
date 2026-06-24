@@ -5,12 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import CultureCard from '../../components/CultureCard';
 import KakaoMap from '../../components/KakaoMap';
 import LaundryPopup from '../../components/LaundryPopup';
+import PlaceDetailModal from '../../components/PlaceDetailModal';
 import TimePickerModal from '../../components/TimePickerModal';
 import TimerBanner from '../../components/TimerBanner';
-import { fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
+import { fetchCultureFacilities, fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
 
 export default function MapScreen() {
-  // 모든 useState 먼저 선언
   const [shops, setShops] = useState([
     { id: 1, name: '에코런드렛', lat: 37.5681, lng: 126.9944, washer: 3, dryer: 2, distance: '도보 10분' },
     { id: 2, name: '더런드리', lat: 37.5650, lng: 127.0021, washer: 2, dryer: 3, distance: '도보 9분' },
@@ -26,8 +26,10 @@ export default function MapScreen() {
     longitude: number;
   } | null>(null);
   const [culturePlaces, setCulturePlaces] = useState<TourPlace[]>([]);
+  const [tourPlaces, setTourPlaces] = useState<TourPlace[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<any>(null);
+  const [showPlaceDetail, setShowPlaceDetail] = useState(false);
 
-  // 모든 useEffect 그 다음에 선언
   useEffect(() => {
     if (!timerRunning) return;
     if (remainSeconds <= 0) {
@@ -46,10 +48,7 @@ export default function MapScreen() {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          console.log('위치 권한 거부');
-          return;
-        }
+        if (status !== 'granted') return;
         const location = await Location.getCurrentPositionAsync({});
         setCurrentLocation({
           latitude: location.coords.latitude,
@@ -63,23 +62,23 @@ export default function MapScreen() {
 
   useEffect(() => {
     const loadCulturePlaces = async () => {
-      const places = await fetchNearbyPlaces(37.5665, 126.9983, 1000);
+      const places = await fetchNearbyPlaces(37.5665, 126.9983, 3000);
       setCulturePlaces(places);
     };
     loadCulturePlaces();
   }, []);
 
-  const [tourPlaces, setTourPlaces] = useState<TourPlace[]>([]);
   useEffect(() => {
-  const loadTourPlaces = async () => {
-    const [attractions, restaurants, culture] = await Promise.all([
-      fetchNearbyPlaces(37.5665, 126.9983, 2000, '12'),
-      fetchNearbyPlaces(37.5665, 126.9983, 2000, '39'),
-      fetchNearbyPlaces(37.5665, 126.9983, 2000, '14'),
-    ]);
-    setTourPlaces([...attractions, ...restaurants, ...culture]);
-  };
-  loadTourPlaces();
+    const loadTourPlaces = async () => {
+      const [attractions, restaurants, culture, facilities] = await Promise.all([
+        fetchNearbyPlaces(37.5665, 126.9983, 3000, '12'),
+        fetchNearbyPlaces(37.5665, 126.9983, 3000, '39'),
+        fetchNearbyPlaces(37.5665, 126.9983, 3000, '14'),
+        fetchCultureFacilities(37.5665, 126.9983, 5000),
+      ]);
+      setTourPlaces([...attractions, ...restaurants, ...culture, ...facilities]);
+    };
+    loadTourPlaces();
   }, []);
 
   const handleShopSelect = (shop: any) => {
@@ -126,16 +125,20 @@ export default function MapScreen() {
       )}
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🗺️ Laundry</Text>
+        <Text style={styles.headerTitle}>🗺️ Laundrip</Text>
       </View>
 
       <View style={styles.mapContainer}>
         <KakaoMap
-         key={JSON.stringify(shops)}
-         onShopSelect={handleShopSelect}
-         currentLocation={currentLocation}
-         shops={shops}
-         tourPlaces={tourPlaces}
+          key={JSON.stringify(shops)}
+          onShopSelect={handleShopSelect}
+          onPlaceSelect={(place) => {
+            setSelectedPlace(place);
+            setShowPlaceDetail(true);
+          }}
+          currentLocation={currentLocation}
+          shops={shops}
+          tourPlaces={tourPlaces}
         />
       </View>
 
@@ -147,7 +150,10 @@ export default function MapScreen() {
               <CultureCard
                 key={place.id}
                 place={place}
-                onPress={() => {}}
+                onPress={() => {
+                  setSelectedPlace(place);
+                  setShowPlaceDetail(true);
+                }}
               />
             ))}
           </ScrollView>
@@ -165,6 +171,12 @@ export default function MapScreen() {
         visible={showTimePicker}
         onConfirm={handleTimeConfirm}
         onClose={() => setShowTimePicker(false)}
+      />
+
+      <PlaceDetailModal
+        place={selectedPlace}
+        visible={showPlaceDetail}
+        onClose={() => setShowPlaceDetail(false)}
       />
     </SafeAreaView>
   );

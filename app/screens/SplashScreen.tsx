@@ -1,11 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 export default function SplashScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>🧺</Text>
-      <Text style={styles.title}>LaundriP</Text>
-      <Text style={styles.subtitle}>Laundry + Trip</Text>
+      <Image
+        source={require('../../assets/images/splash-icon.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -13,23 +15,12 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#4FC3F7',
-    letterSpacing: 2,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#888',
-    marginTop: 8,
+    width: 280,
+    height: 280,
   },
 });

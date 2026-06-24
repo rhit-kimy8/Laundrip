@@ -58,7 +58,10 @@ kakao.maps.load(function() {
       '</div>';
 
     div.addEventListener('click', function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify(shop));
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'shop',
+        payload: shop
+      }));
     });
 
     var overlay = new kakao.maps.CustomOverlay({
@@ -77,6 +80,7 @@ kakao.maps.load(function() {
     '숙박': '🏨',
     '쇼핑': '🛍️',
     '축제/행사': '🎉',
+    '전통시장': '🏪',
     '기타': '📍'
   };
 
@@ -91,6 +95,13 @@ kakao.maps.load(function() {
       '<div style="font-size:13px;">' + icon + '</div>' +
       '<div style="color:#fff;font-size:9px;max-width:55px;overflow:hidden;text-overflow:ellipsis;">' + place.name + '</div>' +
       '</div>';
+
+    div.addEventListener('click', function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'place',
+        payload: place
+      }));
+    });
 
     var overlay = new kakao.maps.CustomOverlay({
       position: new kakao.maps.LatLng(parseFloat(place.mapy), parseFloat(place.mapx)),
@@ -108,6 +119,7 @@ kakao.maps.load(function() {
 
 interface KakaoMapProps {
   onShopSelect: (shop: any) => void;
+  onPlaceSelect: (place: any) => void;
   currentLocation: { latitude: number; longitude: number; } | null;
   shops: {
     id: number;
@@ -127,11 +139,15 @@ interface KakaoMapProps {
   }[];
 }
 
-export default function KakaoMap({ onShopSelect, currentLocation, shops, tourPlaces }: KakaoMapProps) {
+export default function KakaoMap({ onShopSelect, onPlaceSelect, currentLocation, shops, tourPlaces }: KakaoMapProps) {
   const handleMessage = (event: any) => {
     try {
-      const shop = JSON.parse(event.nativeEvent.data);
-      onShopSelect(shop);
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'shop') {
+        onShopSelect(data.payload);
+      } else if (data.type === 'place') {
+        onPlaceSelect(data.payload);
+      }
     } catch (error) {
       console.log('메시지 파싱 오류', error);
     }
@@ -149,7 +165,6 @@ export default function KakaoMap({ onShopSelect, currentLocation, shops, tourPla
         domStorageEnabled
         mixedContentMode="always"
         originWhitelist={['*']}
-        onLoad={() => console.log('지도 로드 성공')}
         onError={(e) => console.log('WEBVIEW ERROR', e.nativeEvent)}
         onHttpError={(e) => console.log('HTTP ERROR', e.nativeEvent)}
       />
