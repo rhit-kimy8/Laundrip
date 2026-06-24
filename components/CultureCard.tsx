@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface CulturePlace {
-  id: number;
+  id: string | number;
   name: string;
   category: string;
   distance: string;
@@ -16,11 +16,15 @@ interface CultureCardProps {
 
 export default function CultureCard({ place, onPress }: CultureCardProps) {
   const categoryIcon: { [key: string]: string } = {
-    '전통시장': '🏪',
-    '관광지': '🗺️',
-    '음식점': '🍜',
-    '문화시설': '🏛️',
-  };
+  '전통시장': '🏪',
+  '관광지': '🗺️', 
+  '음식점': '🍜',
+  '문화시설': '🏛️',
+  '축제/행사': '🎉',
+  '숙박': '🏨',
+  '쇼핑': '🛍️',
+  '기타': '📍',
+};
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>

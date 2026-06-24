@@ -7,14 +7,10 @@ import KakaoMap from '../../components/KakaoMap';
 import LaundryPopup from '../../components/LaundryPopup';
 import TimePickerModal from '../../components/TimePickerModal';
 import TimerBanner from '../../components/TimerBanner';
-
-const MOCK_CULTURE_PLACES = [
-  { id: 1, name: '광장시장', category: '전통시장', distance: '350m', walkTime: '도보 5분', description: '100년 전통의 서울 대표 전통시장. 빈대떡, 마약김밥 등 다양한 먹거리가 유명합니다.' },
-  { id: 2, name: '청계천', category: '관광지', distance: '500m', walkTime: '도보 7분', description: '도심 속 자연을 느낄 수 있는 산책로. 외국인 관광객에게 인기 명소입니다.' },
-  { id: 3, name: '을지로 노가리 골목', category: '음식점', distance: '200m', walkTime: '도보 3분', description: '을지로의 숨은 로컬 맛집 골목. 저렴하고 맛있는 한국 안주를 즐길 수 있습니다.' },
-];
+import { fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
 
 export default function MapScreen() {
+  // 모든 useState 먼저 선언
   const [shops, setShops] = useState([
     { id: 1, name: '에코런드렛', lat: 37.5681, lng: 126.9944, washer: 3, dryer: 2, distance: '도보 10분' },
     { id: 2, name: '더런드리', lat: 37.5650, lng: 127.0021, washer: 2, dryer: 3, distance: '도보 9분' },
@@ -29,7 +25,9 @@ export default function MapScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [culturePlaces, setCulturePlaces] = useState<TourPlace[]>([]);
 
+  // 모든 useEffect 그 다음에 선언
   useEffect(() => {
     if (!timerRunning) return;
     if (remainSeconds <= 0) {
@@ -63,8 +61,28 @@ export default function MapScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    const loadCulturePlaces = async () => {
+      const places = await fetchNearbyPlaces(37.5665, 126.9983, 1000);
+      setCulturePlaces(places);
+    };
+    loadCulturePlaces();
+  }, []);
+
+  const [tourPlaces, setTourPlaces] = useState<TourPlace[]>([]);
+  useEffect(() => {
+  const loadTourPlaces = async () => {
+    const [attractions, restaurants, culture] = await Promise.all([
+      fetchNearbyPlaces(37.5665, 126.9983, 2000, '12'),
+      fetchNearbyPlaces(37.5665, 126.9983, 2000, '39'),
+      fetchNearbyPlaces(37.5665, 126.9983, 2000, '14'),
+    ]);
+    setTourPlaces([...attractions, ...restaurants, ...culture]);
+  };
+  loadTourPlaces();
+  }, []);
+
   const handleShopSelect = (shop: any) => {
-    // shops state에서 최신 데이터로 찾아서 팝업 열기
     const latestShop = shops.find((s) => s.id === shop.id);
     setSelectedShop(latestShop || shop);
     setShowPopup(true);
@@ -76,33 +94,27 @@ export default function MapScreen() {
   };
 
   const handleTimeConfirm = (minutes: number, type: string) => {
-  let updatedShop: any = null;
-
-  setShops((prev) =>
-    prev.map((shop) => {
-      if (shop.id === selectedShop?.id) {
-        const updated = {
-          ...shop,
-          washer: type === '세탁기' ? Math.max(0, shop.washer - 1) : shop.washer,
-          dryer: type === '건조기' ? Math.max(0, shop.dryer - 1) : shop.dryer,
-        };
-        updatedShop = updated;
-        return updated;
-      }
-      return shop;
-    })
-  );
-
-  // selectedShop도 최신 상태로 업데이트
-  if (updatedShop) {
-    setSelectedShop(updatedShop);
-  }
-
-  setRemainSeconds(minutes * 60);
-  setTimerRunning(true);
-  setShowTimePicker(false);
-  setShowCulture(true);
-};
+    let updatedShop: any = null;
+    setShops((prev) =>
+      prev.map((shop) => {
+        if (shop.id === selectedShop?.id) {
+          const updated = {
+            ...shop,
+            washer: type === '세탁기' ? Math.max(0, shop.washer - 1) : shop.washer,
+            dryer: type === '건조기' ? Math.max(0, shop.dryer - 1) : shop.dryer,
+          };
+          updatedShop = updated;
+          return updated;
+        }
+        return shop;
+      })
+    );
+    if (updatedShop) setSelectedShop(updatedShop);
+    setRemainSeconds(minutes * 60);
+    setTimerRunning(true);
+    setShowTimePicker(false);
+    setShowCulture(true);
+  };
 
   const minutes = Math.floor(remainSeconds / 60);
   const seconds = remainSeconds % 60;
@@ -119,10 +131,11 @@ export default function MapScreen() {
 
       <View style={styles.mapContainer}>
         <KakaoMap
-          key={JSON.stringify(shops)}
-          onShopSelect={handleShopSelect}
-          currentLocation={currentLocation}
-          shops={shops}
+         key={JSON.stringify(shops)}
+         onShopSelect={handleShopSelect}
+         currentLocation={currentLocation}
+         shops={shops}
+         tourPlaces={tourPlaces}
         />
       </View>
 
@@ -130,7 +143,7 @@ export default function MapScreen() {
         <View style={styles.cultureSection}>
           <Text style={styles.cultureTitle}>🎯 세탁 대기 중 이런 곳은 어떠세요?</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
-            {MOCK_CULTURE_PLACES.map((place) => (
+            {culturePlaces.map((place) => (
               <CultureCard
                 key={place.id}
                 place={place}
