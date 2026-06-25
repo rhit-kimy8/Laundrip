@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +27,8 @@ export default function CultureScreen() {
   const [remainSeconds, setRemainSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [shopName, setShopName] = useState('');
+  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+
 
   // activeFilter 언어 동기화
   useEffect(() => {
@@ -49,30 +52,47 @@ export default function CultureScreen() {
   }, []);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const [attractionData, restaurantData, cultureData, festivalData, marketData, cultureFacilityData] = await Promise.all([
-          fetchNearbyPlaces(EULJIRO_LAT, EULJIRO_LNG, 3000, '12'),
-          fetchNearbyPlaces(EULJIRO_LAT, EULJIRO_LNG, 3000, '39'),
-          fetchNearbyPlaces(EULJIRO_LAT, EULJIRO_LNG, 3000, '14'),
-          fetchFestivals(EULJIRO_LAT, EULJIRO_LNG),
-          getMarketsNearby(EULJIRO_LAT, EULJIRO_LNG, 3000),
-          fetchCultureFacilities(EULJIRO_LAT, EULJIRO_LNG, 5000),
-        ]);
-        setAttractions(attractionData);
-        setRestaurants(restaurantData);
-        setCulture([...cultureData, ...cultureFacilityData]);
-        setFestivals(festivalData);
-        setMarkets(marketData);
-      } catch (error) {
-        console.log('데이터 로드 오류:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+  (async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const location = await Location.getCurrentPositionAsync({});
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    } catch {}
+  })();
+}, []);
+
+  useEffect(() => {
+  if (!userLocation) return; // 위치 없으면 대기
+  const loadData = async () => {
+    const lat = userLocation.latitude;
+    const lng = userLocation.longitude;
+    setLoading(true);
+    try {
+      const [attractionData, restaurantData, cultureData, festivalData, marketData, cultureFacilityData] = await Promise.all([
+        fetchNearbyPlaces(lat, lng, 2000, '12'),
+        fetchNearbyPlaces(lat, lng, 2000, '39'),
+        fetchNearbyPlaces(lat, lng, 2000, '14'),
+        fetchFestivals(lat, lng),
+        getMarketsNearby(lat, lng, 2000),
+        fetchCultureFacilities(lat, lng, 2000),
+      ]);
+      setAttractions(attractionData);
+      setRestaurants(restaurantData);
+      setCulture([...cultureData, ...cultureFacilityData]);
+      setFestivals(festivalData);
+      setMarkets(marketData);
+    } catch (error) {
+      console.log('데이터 로드 오류:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  loadData();
+}, [userLocation]);
 
   const FILTERS = [
     T.filterAll, T.filterTourist, T.filterFood,

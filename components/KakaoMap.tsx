@@ -27,13 +27,17 @@ html, body { margin:0; padding:0; width:100%; height:100%; }
 <script>
 kakao.maps.load(function() {
   var container = document.getElementById('map');
+  var userLocation = ${JSON.stringify(currentLocation)};
+  
+  var initLat = userLocation ? userLocation.latitude : 37.5665;
+  var initLng = userLocation ? userLocation.longitude : 126.9983;
+  
   var options = {
-    center: new kakao.maps.LatLng(37.5665, 126.9983),
+    center: new kakao.maps.LatLng(initLat, initLng),
     level: 5
   };
   var map = new kakao.maps.Map(container, options);
 
-  var userLocation = ${JSON.stringify(currentLocation)};
   if (userLocation) {
     var userOverlay = new kakao.maps.CustomOverlay({
       position: new kakao.maps.LatLng(userLocation.latitude, userLocation.longitude),

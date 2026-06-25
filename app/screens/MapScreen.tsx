@@ -66,38 +66,36 @@ export default function MapScreen() {
   }, [timerRunning, remainSeconds]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
-        const location = await Location.getCurrentPositionAsync({});
-        const lat = location.coords.latitude;
-        const lng = location.coords.longitude;
-        setCurrentLocation({ latitude: lat, longitude: lng });
-        const nearbyShops = await fetchNearbyLaundry(lat, lng);
-        if (nearbyShops.length > 0) setShops(nearbyShops);
-      } catch (error) {
-        console.log('위치 가져오기 실패:', error);
-      }
-    })();
-  }, []);
+  (async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const location = await Location.getCurrentPositionAsync({});
+      const lat = location.coords.latitude;
+      const lng = location.coords.longitude;
+      setCurrentLocation({ latitude: lat, longitude: lng });
 
-  useEffect(() => {
-    const loadTourPlaces = async () => {
+      // 세탁방 검색 - 현재 위치 기반
+      const nearbyShops = await fetchNearbyLaundry(lat, lng);
+      if (nearbyShops.length > 0) setShops(nearbyShops);
+
+      // 관광지 데이터 - 현재 위치 기반
       const [attractions, restaurants, culture, facilities, markets, festivals] = await Promise.all([
-        fetchNearbyPlaces(37.5665, 126.9983, 3000, '12'),
-        fetchNearbyPlaces(37.5665, 126.9983, 3000, '39'),
-        fetchNearbyPlaces(37.5665, 126.9983, 3000, '14'),
-        fetchCultureFacilities(37.5665, 126.9983, 5000),
-        getMarketsNearby(37.5665, 126.9983, 3000),
-        fetchFestivals(37.5665, 126.9983),
+        fetchNearbyPlaces(lat, lng, 2000, '12'),
+        fetchNearbyPlaces(lat, lng, 2000, '39'),
+        fetchNearbyPlaces(lat, lng, 2000, '14'),
+        fetchCultureFacilities(lat, lng, 2000),
+        getMarketsNearby(lat, lng, 2000),
+        fetchFestivals(lat, lng),
       ]);
       const all = [...attractions, ...restaurants, ...culture, ...facilities, ...markets, ...festivals];
       setTourPlaces(all);
       setFilteredPlaces(all);
-    };
-    loadTourPlaces();
-  }, []);
+    } catch (error) {
+      console.log('위치 가져오기 실패:', error);
+    }
+  })();
+}, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
