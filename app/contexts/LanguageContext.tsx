@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState } from 'react';
 
-export type Language = '한국어' | 'English' | '日本語' | '中文';
 
+export type Language = '한국어' | 'English' | '日本語' | '中文';
 export const LANG_FLAG: Record<Language, string> = {
   '한국어': '🇰🇷',
   'English': '🇺🇸',
@@ -210,3 +210,4 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 };
 
 export const useLanguage = () => useContext(LanguageContext);
+export default LanguageProvider;

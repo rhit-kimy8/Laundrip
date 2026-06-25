@@ -66,4 +66,4 @@ export const filterMarketsByKeyword = async (
 };
 
 // 전체 데이터 반환 (AI 추천용)
-export const getAllMarkets = (): Market[] => ALL_MARKETS;
+export const getAllMarkets = (): Market[] => ALL_MARKETS;   

@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 const KAKAO_MAP_KEY = 'ca8e6f0255a104a0c23afeabb67a3f1b';
@@ -28,15 +28,19 @@ html, body { margin:0; padding:0; width:100%; height:100%; }
 kakao.maps.load(function() {
   var container = document.getElementById('map');
   var userLocation = ${JSON.stringify(currentLocation)};
-  
+
   var initLat = userLocation ? userLocation.latitude : 37.5665;
   var initLng = userLocation ? userLocation.longitude : 126.9983;
-  
+
   var options = {
     center: new kakao.maps.LatLng(initLat, initLng),
     level: 5
   };
   var map = new kakao.maps.Map(container, options);
+
+  kakao.maps.event.addListener(map, 'click', function() {
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapPress' }));
+  });
 
   if (userLocation) {
     var userOverlay = new kakao.maps.CustomOverlay({
@@ -65,14 +69,19 @@ kakao.maps.load(function() {
         : '세탁' + shop.washer + ' · 건조' + shop.dryer;
 
       var div = document.createElement('div');
-      div.innerHTML =
-        '<div style="background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:12px;padding:6px 8px;text-align:center;cursor:pointer;width:70px;">' +
-        '<div style="font-size:16px;">🧺</div>' +
-        '<div style="color:white;font-size:9px;font-weight:bold;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px;margin:0 auto;">' + shop.name + '</div>' +
-        '<div style="color:' + borderColor + ';font-size:8px;margin-top:2px;text-align:center;">' + statusText + '</div>' +
-        '</div>';
+      var showAllMode = ${JSON.stringify(showShops)};
+var shopMarker = showAllMode && !isActive
+  ? '<div style="width:28px;height:28px;background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">🧺</div>'
+  : '<div style="background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:12px;padding:6px 8px;text-align:center;cursor:pointer;width:70px;">' +
+    '<div style="font-size:16px;">🧺</div>' +
+    '<div style="color:white;font-size:9px;font-weight:bold;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px;margin:0 auto;">' + shop.name + '</div>' +
+    '<div style="color:' + borderColor + ';font-size:8px;margin-top:2px;text-align:center;">' + statusText + '</div>' +
+    '</div>';
 
-      div.addEventListener('click', function() {
+div.innerHTML = shopMarker;
+
+      div.addEventListener('click', function(event) {
+        event.stopPropagation();
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'shop',
           payload: shop
@@ -104,13 +113,18 @@ kakao.maps.load(function() {
     if (!place.mapx || !place.mapy) return;
     var icon = categoryIcon[place.category] || '📍';
     var div = document.createElement('div');
-    div.innerHTML =
-      '<div style="background:rgba(30,30,46,0.9);border:1.5px solid #aaa;border-radius:10px;padding:4px 7px;text-align:center;cursor:pointer;white-space:nowrap;">' +
-      '<div style="font-size:13px;">' + icon + '</div>' +
-      '<div style="color:#fff;font-size:9px;max-width:55px;overflow:hidden;text-overflow:ellipsis;">' + place.name + '</div>' +
-      '</div>';
+    var showAllMode = ${JSON.stringify(showShops)};
+var markerContent = showAllMode
+  ? '<div style="width:28px;height:28px;background:rgba(30,30,46,0.9);border:1.5px solid #aaa;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;">' + icon + '</div>'
+  : '<div style="background:rgba(30,30,46,0.9);border:1.5px solid #aaa;border-radius:10px;padding:4px 7px;text-align:center;cursor:pointer;white-space:nowrap;">' +
+    '<div style="font-size:13px;">' + icon + '</div>' +
+    '<div style="color:#fff;font-size:9px;max-width:55px;overflow:hidden;text-overflow:ellipsis;">' + place.name + '</div>' +
+    '</div>';
 
-    div.addEventListener('click', function() {
+div.innerHTML = markerContent;
+
+    div.addEventListener('click', function(event) {
+      event.stopPropagation();
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'place',
         payload: place
@@ -131,10 +145,12 @@ kakao.maps.load(function() {
 `;
 
 interface KakaoMapProps {
+  onToggleFullscreen?: () => void;
   showShops?: boolean;
   activeShopId?: number;
   onShopSelect: (shop: any) => void;
   onPlaceSelect: (place: any) => void;
+  onMapPress?: () => void;
   currentLocation: { latitude: number; longitude: number; } | null;
   shops: {
     id: number;
@@ -157,6 +173,8 @@ interface KakaoMapProps {
 export default function KakaoMap({
   onShopSelect,
   onPlaceSelect,
+  onMapPress,
+  onToggleFullscreen,
   currentLocation,
   shops,
   tourPlaces,
@@ -170,6 +188,8 @@ export default function KakaoMap({
         onShopSelect(data.payload);
       } else if (data.type === 'place') {
         onPlaceSelect(data.payload);
+      } else if (data.type === 'mapPress') {
+        onMapPress?.();
       }
     } catch (error) {
       console.log('메시지 파싱 오류', error);
@@ -191,6 +211,15 @@ export default function KakaoMap({
         onError={(e) => console.log('WEBVIEW ERROR', e.nativeEvent)}
         onHttpError={(e) => console.log('HTTP ERROR', e.nativeEvent)}
       />
+      {/* 풀스크린 토글 버튼 */}
+      {onToggleFullscreen && (
+        <TouchableOpacity
+          style={styles.fullscreenButton}
+          onPress={onToggleFullscreen}
+        >
+          <Text style={styles.fullscreenButtonText}>⛶</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -198,4 +227,16 @@ export default function KakaoMap({
 const styles = StyleSheet.create({
   container: { flex: 1, borderRadius: 16, overflow: 'hidden' },
   webview: { flex: 1 },
+  fullscreenButton: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenButtonText: { color: '#fff', fontSize: 18 },
 });
