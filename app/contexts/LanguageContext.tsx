@@ -19,7 +19,7 @@ export const LANG_SHORT: Record<Language, string> = {
 
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   '한국어': {
-    header: '🗺️ LaundriP',
+    header: 'LaundriP',
     search: '장소 검색...',
     aiTitle: '취향 맞춤 추천',
     aiSubTitle: 'AI 추천',
@@ -58,7 +58,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     onboardingSelect: '관심사를 선택해주세요',
   },
   'English': {
-    header: '🗺️ LaundriP',
+    header: 'LaundriP',
     search: 'Search places...',
     aiTitle: 'For You',
     aiSubTitle: 'AI Picks',
@@ -97,7 +97,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     onboardingSelect: 'Please select your interests',
   },
   '日本語': {
-    header: '🗺️ LaundriP',
+    header: 'LaundriP',
     search: '場所を検索...',
     aiTitle: 'おすすめ',
     aiSubTitle: 'AI おすすめ',
@@ -136,7 +136,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     onboardingSelect: '興味を選んでください',
   },
   '中文': {
-    header: '🗺️ LaundriP',
+    header: 'LaundriP',
     search: '搜索地点...',
     aiTitle: '为你推荐',
     aiSubTitle: 'AI 推荐',

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CultureCard from '../../components/CultureCard';
 import KakaoMap from '../../components/KakaoMap';
@@ -97,14 +97,21 @@ export default function MapScreen() {
 
   useEffect(() => {
     (async () => {
+      let lat = 37.5665;
+      let lng = 126.9983;
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
-        const location = await Location.getCurrentPositionAsync({});
-        const lat = location.coords.latitude;
-        const lng = location.coords.longitude;
-        setCurrentLocation({ latitude: lat, longitude: lng });
+        if (status === 'granted') {
+          const location = await Location.getCurrentPositionAsync({});
+          lat = location.coords.latitude;
+          lng = location.coords.longitude;
+        }
+      } catch (error) {
+        console.log('위치 가져오기 실패:', error);
+      }
+      setCurrentLocation({ latitude: lat, longitude: lng });
 
+      try {
         const nearbyShops = await fetchNearbyLaundry(lat, lng);
         if (nearbyShops.length > 0) setShops(nearbyShops);
 
@@ -120,7 +127,7 @@ export default function MapScreen() {
         setTourPlaces(all);
         setFilteredPlaces(all);
       } catch (error) {
-        console.log('위치 가져오기 실패:', error);
+        console.log('주변 데이터 로드 실패:', error);
       }
     })();
   }, []);
@@ -262,7 +269,14 @@ export default function MapScreen() {
 
       {!mapFullscreen && (
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{T.header}</Text>
+          <View style={styles.headerTitleRow}>
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.headerTitle}>{T.header}</Text>
+          </View>
           <View style={styles.langSwitcher}>
             {(['한국어', 'English', '日本語', '中文'] as Language[]).map((lang) => (
               <TouchableOpacity
@@ -292,7 +306,7 @@ export default function MapScreen() {
               returnKeyType="search"
             />
             <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
-              <Text style={styles.searchIcon}>🔍</Text>
+              <Text style={styles.searchIcon}>⌕</Text>
             </TouchableOpacity>
           </View>
 
@@ -344,14 +358,6 @@ export default function MapScreen() {
           showShops={showShops}
           activeShopId={activeShopId}
         />
-        {mapFullscreen && (
-          <TouchableOpacity
-            style={styles.mapCloseButton}
-            onPress={() => setMapFullscreen(false)}
-          >
-            <Text style={styles.mapCloseButtonText}>✕</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {!mapFullscreen && showCulture && (
@@ -448,6 +454,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerLogo: { width: 24, height: 24, borderRadius: 6 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   langSwitcher: { flexDirection: 'row', gap: 4 },
   langChip: {
@@ -472,7 +480,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: '#fff', fontSize: 14 },
   searchButton: { padding: 4 },
-  searchIcon: { fontSize: 18 },
+  searchIcon: { fontSize: 18, color: '#fff' },
   filterScroll: { maxHeight: 40 },
   filterContainer: { gap: 8, alignItems: 'center' },
   filterButton: {
@@ -497,19 +505,6 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     zIndex: 100,
   },
-  mapCloseButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 101,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mapCloseButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   cultureSection: {
     backgroundColor: '#1e1e2e',
     borderTopLeftRadius: 16,
