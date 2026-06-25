@@ -44,6 +44,7 @@ export default function MapScreen() {
   const [aiUnavailable, setAiUnavailable] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('전체');
+  const [mapFullscreen, setMapFullscreen] = useState(false);
 
   const FILTERS = [
     T.filterAll, T.filterLaundry, T.filterTourist,
@@ -221,74 +222,78 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {timerRunning && <TimerBanner minutes={minutes} seconds={seconds} shopName={activeShopName} />}
+      {!mapFullscreen && timerRunning && <TimerBanner minutes={minutes} seconds={seconds} shopName={activeShopName} />}
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{T.header}</Text>
-        <View style={styles.langSwitcher}>
-          {(['한국어', 'English', '日本語', '中文'] as Language[]).map((lang) => (
-            <TouchableOpacity
-              key={lang}
-              style={[styles.langChip, language === lang && styles.langChipActive]}
-              onPress={() => setLanguage(lang)}
-            >
-              <Text style={[styles.langChipText, language === lang && styles.langChipTextActive]}>
-                {LANG_SHORT[lang]}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {!mapFullscreen && (
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{T.header}</Text>
+          <View style={styles.langSwitcher}>
+            {(['한국어', 'English', '日本語', '中文'] as Language[]).map((lang) => (
+              <TouchableOpacity
+                key={lang}
+                style={[styles.langChip, language === lang && styles.langChipActive]}
+                onPress={() => setLanguage(lang)}
+              >
+                <Text style={[styles.langChipText, language === lang && styles.langChipTextActive]}>
+                  {LANG_SHORT[lang]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder={T.search}
-            placeholderTextColor="#888"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
-            <Text style={styles.searchIcon}>🔍</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterScroll}
-          contentContainerStyle={styles.filterContainer}
-        >
-          {displayFilters.map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[
-                styles.filterButton,
-                (activeFilter === filter || (filter.startsWith('🔍') && activeFilter === '검색결과')) && styles.filterButtonActive,
-              ]}
-              onPress={() => {
-                if (filter.startsWith('🔍')) {
-                  setActiveFilter('검색결과');
-                } else {
-                  handleFilter(filter);
-                }
-              }}
-            >
-              <Text style={[
-                styles.filterText,
-                (activeFilter === filter || (filter.startsWith('🔍') && activeFilter === '검색결과')) && styles.filterTextActive,
-              ]}>
-                {filter}
-              </Text>
+      {!mapFullscreen && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder={T.search}
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+            />
+            <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+              <Text style={styles.searchIcon}>🔍</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+          </View>
 
-      <View style={styles.mapContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
+            contentContainerStyle={styles.filterContainer}
+          >
+            {displayFilters.map((filter) => (
+              <TouchableOpacity
+                key={filter}
+                style={[
+                  styles.filterButton,
+                  (activeFilter === filter || (filter.startsWith('🔍') && activeFilter === '검색결과')) && styles.filterButtonActive,
+                ]}
+                onPress={() => {
+                  if (filter.startsWith('🔍')) {
+                    setActiveFilter('검색결과');
+                  } else {
+                    handleFilter(filter);
+                  }
+                }}
+              >
+                <Text style={[
+                  styles.filterText,
+                  (activeFilter === filter || (filter.startsWith('🔍') && activeFilter === '검색결과')) && styles.filterTextActive,
+                ]}>
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      <View style={[styles.mapContainer, mapFullscreen && styles.mapContainerFullscreen]}>
         <KakaoMap
           key={JSON.stringify(shops) + activeFilter + searchQuery + activeShopId}
           onShopSelect={handleShopSelect}
@@ -296,15 +301,21 @@ export default function MapScreen() {
             setSelectedPlace(place);
             setShowPlaceDetail(true);
           }}
+          onMapPress={() => setMapFullscreen((prev) => !prev)}
           currentLocation={currentLocation}
           shops={shops}
           tourPlaces={filteredPlaces}
           showShops={showShops}
           activeShopId={activeShopId}
         />
+        {mapFullscreen && (
+          <TouchableOpacity style={styles.mapCloseButton} onPress={() => setMapFullscreen(false)}>
+            <Text style={styles.mapCloseButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {showCulture && (
+      {!mapFullscreen && showCulture && (
         <View style={styles.cultureSection}>
           <TouchableOpacity
             style={styles.cultureSectionHeader}
@@ -437,6 +448,29 @@ const styles = StyleSheet.create({
   filterText: { color: '#888', fontSize: 12, fontWeight: '600' },
   filterTextActive: { color: '#1a1a2e' },
   mapContainer: { flex: 1, margin: 16, borderRadius: 16, overflow: 'hidden' },
+  mapContainerFullscreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    margin: 0,
+    borderRadius: 0,
+    zIndex: 100,
+  },
+  mapCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 101,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapCloseButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   cultureSection: {
     backgroundColor: '#1e1e2e',
     borderTopLeftRadius: 16,

@@ -38,6 +38,10 @@ kakao.maps.load(function() {
   };
   var map = new kakao.maps.Map(container, options);
 
+  kakao.maps.event.addListener(map, 'click', function() {
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapPress' }));
+  });
+
   if (userLocation) {
     var userOverlay = new kakao.maps.CustomOverlay({
       position: new kakao.maps.LatLng(userLocation.latitude, userLocation.longitude),
@@ -72,7 +76,8 @@ kakao.maps.load(function() {
         '<div style="color:' + borderColor + ';font-size:8px;margin-top:2px;text-align:center;">' + statusText + '</div>' +
         '</div>';
 
-      div.addEventListener('click', function() {
+      div.addEventListener('click', function(event) {
+        event.stopPropagation();
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'shop',
           payload: shop
@@ -110,7 +115,8 @@ kakao.maps.load(function() {
       '<div style="color:#fff;font-size:9px;max-width:55px;overflow:hidden;text-overflow:ellipsis;">' + place.name + '</div>' +
       '</div>';
 
-    div.addEventListener('click', function() {
+    div.addEventListener('click', function(event) {
+      event.stopPropagation();
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'place',
         payload: place
@@ -135,6 +141,7 @@ interface KakaoMapProps {
   activeShopId?: number;
   onShopSelect: (shop: any) => void;
   onPlaceSelect: (place: any) => void;
+  onMapPress?: () => void;
   currentLocation: { latitude: number; longitude: number; } | null;
   shops: {
     id: number;
@@ -157,6 +164,7 @@ interface KakaoMapProps {
 export default function KakaoMap({
   onShopSelect,
   onPlaceSelect,
+  onMapPress,
   currentLocation,
   shops,
   tourPlaces,
@@ -170,6 +178,8 @@ export default function KakaoMap({
         onShopSelect(data.payload);
       } else if (data.type === 'place') {
         onPlaceSelect(data.payload);
+      } else if (data.type === 'mapPress') {
+        onMapPress?.();
       }
     } catch (error) {
       console.log('메시지 파싱 오류', error);
