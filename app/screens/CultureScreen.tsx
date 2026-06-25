@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -6,12 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import CultureCard from '../../components/CultureCard';
 import { getMarketsNearby, Market } from '../../components/MarketService';
 import PlaceDetailModal from '../../components/PlaceDetailModal';
-import TimerBanner from '../../components/TimerBanner';
 import { fetchCultureFacilities, fetchFestivals, fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
 import { useLanguage } from '../contexts/LanguageContext';
-
-const EULJIRO_LAT = 37.5665;
-const EULJIRO_LNG = 126.9983;
 
 export default function CultureScreen() {
   const { T } = useLanguage();
@@ -24,75 +19,63 @@ export default function CultureScreen() {
   const [activeFilter, setActiveFilter] = useState<string>('');
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [showDetail, setShowDetail] = useState(false);
-  const [remainSeconds, setRemainSeconds] = useState(0);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [shopName, setShopName] = useState('');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
 
-
-  // activeFilter 언어 동기화
   useEffect(() => {
     setActiveFilter(T.filterAll);
   }, [T.filterAll]);
 
   useEffect(() => {
-    const interval = setInterval(async () => {
+    (async () => {
       try {
-        const saved = await AsyncStorage.getItem('timer_end_time');
-        const name = await AsyncStorage.getItem('timer_shop_name');
-        if (saved) {
-          const remain = Math.max(0, Math.floor((parseInt(saved) - Date.now()) / 1000));
-          setRemainSeconds(remain);
-          setTimerRunning(remain > 0);
-          setShopName(name || '');
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setUserLocation({ latitude: 37.5665, longitude: 126.9983 });
+          return;
         }
-      } catch {}
-    }, 1000);
-    return () => clearInterval(interval);
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      } catch {
+        setUserLocation({ latitude: 37.5665, longitude: 126.9983 });
+      }
+    })();
   }, []);
 
   useEffect(() => {
-  (async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const location = await Location.getCurrentPositionAsync({});
-      setUserLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-    } catch {}
-  })();
-}, []);
+    if (!userLocation) return;
+    const loadData = async () => {
+      const lat = userLocation.latitude;
+      const lng = userLocation.longitude;
+      setLoading(true);
+      try {
+        // 빠른 데이터 먼저 로드
+        const [attractionData, restaurantData, cultureData, festivalData, marketData] = await Promise.all([
+          fetchNearbyPlaces(lat, lng, 2000, '12'),
+          fetchNearbyPlaces(lat, lng, 2000, '39'),
+          fetchNearbyPlaces(lat, lng, 2000, '14'),
+          fetchFestivals(lat, lng),
+          getMarketsNearby(lat, lng, 2000),
+        ]);
+        setAttractions(attractionData);
+        setRestaurants(restaurantData);
+        setCulture(cultureData);
+        setFestivals(festivalData);
+        setMarkets(marketData);
+        setLoading(false); // 먼저 화면 보여주기
 
-  useEffect(() => {
-  if (!userLocation) return; // 위치 없으면 대기
-  const loadData = async () => {
-    const lat = userLocation.latitude;
-    const lng = userLocation.longitude;
-    setLoading(true);
-    try {
-      const [attractionData, restaurantData, cultureData, festivalData, marketData, cultureFacilityData] = await Promise.all([
-        fetchNearbyPlaces(lat, lng, 2000, '12'),
-        fetchNearbyPlaces(lat, lng, 2000, '39'),
-        fetchNearbyPlaces(lat, lng, 2000, '14'),
-        fetchFestivals(lat, lng),
-        getMarketsNearby(lat, lng, 2000),
-        fetchCultureFacilities(lat, lng, 2000),
-      ]);
-      setAttractions(attractionData);
-      setRestaurants(restaurantData);
-      setCulture([...cultureData, ...cultureFacilityData]);
-      setFestivals(festivalData);
-      setMarkets(marketData);
-    } catch (error) {
-      console.log('데이터 로드 오류:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  loadData();
-}, [userLocation]);
+        // 박물관/미술관 나중에 추가
+        const cultureFacilityData = await fetchCultureFacilities(lat, lng, 2000);
+        setCulture((prev) => [...prev, ...cultureFacilityData]);
+      } catch (error) {
+        console.log('데이터 로드 오류:', error);
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [userLocation]);
 
   const FILTERS = [
     T.filterAll, T.filterTourist, T.filterFood,
@@ -124,13 +107,8 @@ export default function CultureScreen() {
   const showMarkets = activeFilter === T.filterAll || activeFilter === T.filterMarket;
   const showFestivals = activeFilter === T.filterAll || activeFilter === T.filterFestival;
 
-  const timerMinutes = Math.floor(remainSeconds / 60);
-  const timerSeconds = remainSeconds % 60;
-
   return (
     <SafeAreaView style={styles.container}>
-      {timerRunning && <TimerBanner minutes={timerMinutes} seconds={timerSeconds} shopName={shopName} />}
-
       <View style={styles.header}>
         <Text style={styles.title}>{T.cultureTitle}</Text>
         <Text style={styles.subtitle}>{T.cultureSubtitle}</Text>

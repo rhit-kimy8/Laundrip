@@ -1,22 +1,21 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLanguage } from '../app/contexts/LanguageContext';
 
 interface TimerBannerProps {
   minutes: number;
   seconds: number;
   shopName?: string;
+  onCancel?: () => void;
 }
 
-export default function TimerBanner({ minutes, seconds, shopName }: TimerBannerProps) {
+export default function TimerBanner({ minutes, seconds, shopName, onCancel }: TimerBannerProps) {
   const { T } = useLanguage();
 
   return (
     <View style={styles.banner}>
       <Text style={styles.icon}>🧺</Text>
-      <View>
-        {shopName && (
-          <Text style={styles.shopName}>{shopName}</Text>
-        )}
+      <View style={styles.textContainer}>
+        {shopName && <Text style={styles.shopName}>{shopName}</Text>}
         <Text style={styles.text}>
           {T.timerBanner}{' '}
           <Text style={styles.time}>
@@ -24,6 +23,11 @@ export default function TimerBanner({ minutes, seconds, shopName }: TimerBannerP
           </Text>
         </Text>
       </View>
+      {onCancel && (
+        <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+          <Text style={styles.cancelText}>✕</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -32,13 +36,13 @@ const styles = StyleSheet.create({
   banner: {
     backgroundColor: '#4FC3F7',
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
   },
   icon: { fontSize: 18 },
+  textContainer: { flex: 1 },
   shopName: {
     color: '#1a1a2e',
     fontSize: 11,
@@ -47,4 +51,15 @@ const styles = StyleSheet.create({
   },
   text: { color: '#1a1a2e', fontWeight: '600', fontSize: 14 },
   time: { fontWeight: 'bold', fontSize: 16 },
+  cancelButton: {
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  cancelText: {
+    color: '#1a1a2e',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });

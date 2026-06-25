@@ -50,6 +50,19 @@ export default function MapScreen() {
     T.filterFood, T.filterCulture, T.filterMarket, T.filterFestival
   ];
 
+  const handleCancelWash = async () => {
+    setTimerRunning(false);
+    setShowCulture(false);
+    setActiveShopId(undefined);
+    setActiveShopName('');
+    setRemainSeconds(0);
+    setPreferenceRecommendations([]);
+    setAiRecommendations([]);
+    await AsyncStorage.removeItem('timer_end_time');
+    await AsyncStorage.removeItem('timer_shop_name');
+  };
+
+  // 타이머 카운트다운
   useEffect(() => {
     if (!timerRunning) return;
     if (remainSeconds <= 0) {
@@ -65,37 +78,54 @@ export default function MapScreen() {
     return () => clearInterval(interval);
   }, [timerRunning, remainSeconds]);
 
+  // 취소 감지 (CultureScreen에서 취소 시)
   useEffect(() => {
-  (async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const location = await Location.getCurrentPositionAsync({});
-      const lat = location.coords.latitude;
-      const lng = location.coords.longitude;
-      setCurrentLocation({ latitude: lat, longitude: lng });
+    if (!timerRunning) return;
+    const checkCancel = setInterval(async () => {
+      const saved = await AsyncStorage.getItem('timer_end_time');
+      if (!saved) {
+        setTimerRunning(false);
+        setShowCulture(false);
+        setActiveShopId(undefined);
+        setActiveShopName('');
+        setRemainSeconds(0);
+        setPreferenceRecommendations([]);
+        setAiRecommendations([]);
+      }
+    }, 2000);
+    return () => clearInterval(checkCancel);
+  }, [timerRunning]);
 
-      // 세탁방 검색 - 현재 위치 기반
-      const nearbyShops = await fetchNearbyLaundry(lat, lng);
-      if (nearbyShops.length > 0) setShops(nearbyShops);
+  // 위치 + 데이터 로드
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const location = await Location.getCurrentPositionAsync({});
+        const lat = location.coords.latitude;
+        const lng = location.coords.longitude;
+        setCurrentLocation({ latitude: lat, longitude: lng });
 
-      // 관광지 데이터 - 현재 위치 기반
-      const [attractions, restaurants, culture, facilities, markets, festivals] = await Promise.all([
-        fetchNearbyPlaces(lat, lng, 2000, '12'),
-        fetchNearbyPlaces(lat, lng, 2000, '39'),
-        fetchNearbyPlaces(lat, lng, 2000, '14'),
-        fetchCultureFacilities(lat, lng, 2000),
-        getMarketsNearby(lat, lng, 2000),
-        fetchFestivals(lat, lng),
-      ]);
-      const all = [...attractions, ...restaurants, ...culture, ...facilities, ...markets, ...festivals];
-      setTourPlaces(all);
-      setFilteredPlaces(all);
-    } catch (error) {
-      console.log('위치 가져오기 실패:', error);
-    }
-  })();
-}, []);
+        const nearbyShops = await fetchNearbyLaundry(lat, lng);
+        if (nearbyShops.length > 0) setShops(nearbyShops);
+
+        const [attractions, restaurants, culture, facilities, markets, festivals] = await Promise.all([
+          fetchNearbyPlaces(lat, lng, 2000, '12'),
+          fetchNearbyPlaces(lat, lng, 2000, '39'),
+          fetchNearbyPlaces(lat, lng, 2000, '14'),
+          fetchCultureFacilities(lat, lng, 2000),
+          getMarketsNearby(lat, lng, 2000),
+          fetchFestivals(lat, lng),
+        ]);
+        const all = [...attractions, ...restaurants, ...culture, ...facilities, ...markets, ...festivals];
+        setTourPlaces(all);
+        setFilteredPlaces(all);
+      } catch (error) {
+        console.log('위치 가져오기 실패:', error);
+      }
+    })();
+  }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -221,7 +251,14 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {timerRunning && <TimerBanner minutes={minutes} seconds={seconds} shopName={activeShopName} />}
+      {timerRunning && (
+        <TimerBanner
+          minutes={minutes}
+          seconds={seconds}
+          shopName={activeShopName}
+          onCancel={handleCancelWash}
+        />
+      )}
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{T.header}</Text>
