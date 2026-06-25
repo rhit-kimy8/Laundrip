@@ -7,7 +7,8 @@ const generateMapHTML = (
   apiKey: string,
   currentLocation: { latitude: number; longitude: number; } | null,
   shops: any[],
-  tourPlaces: any[]
+  tourPlaces: any[],
+  showShops: boolean
 ) => `
 <!DOCTYPE html>
 <html>
@@ -46,31 +47,34 @@ kakao.maps.load(function() {
     userOverlay.setMap(map);
   }
 
-  // 세탁소 마커
-  var shops = ${JSON.stringify(shops)};
-  shops.forEach(function(shop) {
-    var div = document.createElement('div');
-    div.innerHTML =
-      '<div style="background:#1e1e2e;border:2px solid #4FC3F7;border-radius:12px;padding:8px 12px;text-align:center;cursor:pointer;">' +
-      '<div style="font-size:20px;">🧺</div>' +
-      '<div style="color:white;font-size:11px;font-weight:bold;">' + shop.name + '</div>' +
-      '<div style="color:#4FC3F7;font-size:10px;">세탁 ' + shop.washer + ' · 건조 ' + shop.dryer + '</div>' +
-      '</div>';
+  // 세탁소 마커 (showShops가 true일 때만)
+  var showShops = ${JSON.stringify(showShops)};
+  if (showShops) {
+    var shops = ${JSON.stringify(shops)};
+    shops.forEach(function(shop) {
+      var div = document.createElement('div');
+      div.innerHTML =
+        '<div style="background:#1e1e2e;border:2px solid #4FC3F7;border-radius:12px;padding:6px 8px;text-align:center;cursor:pointer;width:70px;">' +
+        '<div style="font-size:16px;">🧺</div>' +
+        '<div style="color:white;font-size:9px;font-weight:bold;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px;margin:0 auto;">' + shop.name + '</div>' +
+        '<div style="color:#4FC3F7;font-size:8px;margin-top:2px;text-align:center;">세탁' + shop.washer + ' · 건조' + shop.dryer + '</div>' +
+        '</div>';
 
-    div.addEventListener('click', function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'shop',
-        payload: shop
-      }));
-    });
+      div.addEventListener('click', function() {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'shop',
+          payload: shop
+        }));
+      });
 
-    var overlay = new kakao.maps.CustomOverlay({
-      position: new kakao.maps.LatLng(shop.lat, shop.lng),
-      content: div,
-      yAnchor: 1
+      var overlay = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(shop.lat, shop.lng),
+        content: div,
+        yAnchor: 1
+      });
+      overlay.setMap(map);
     });
-    overlay.setMap(map);
-  });
+  }
 
   // 관광지/음식점/문화시설 마커
   var categoryIcon = {
@@ -118,6 +122,7 @@ kakao.maps.load(function() {
 `;
 
 interface KakaoMapProps {
+  showShops?: boolean;
   onShopSelect: (shop: any) => void;
   onPlaceSelect: (place: any) => void;
   currentLocation: { latitude: number; longitude: number; } | null;
@@ -139,7 +144,7 @@ interface KakaoMapProps {
   }[];
 }
 
-export default function KakaoMap({ onShopSelect, onPlaceSelect, currentLocation, shops, tourPlaces }: KakaoMapProps) {
+export default function KakaoMap({ onShopSelect, onPlaceSelect, currentLocation, shops, tourPlaces, showShops = true }: KakaoMapProps) {
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -157,7 +162,7 @@ export default function KakaoMap({ onShopSelect, onPlaceSelect, currentLocation,
     <View style={styles.container}>
       <WebView
         source={{
-          html: generateMapHTML(KAKAO_MAP_KEY, currentLocation, shops, tourPlaces),
+          html: generateMapHTML(KAKAO_MAP_KEY, currentLocation, shops, tourPlaces, showShops),
         }}
         style={styles.webview}
         onMessage={handleMessage}

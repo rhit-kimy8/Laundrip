@@ -1,41 +1,59 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CultureCard from '../../components/CultureCard';
 import KakaoMap from '../../components/KakaoMap';
 import LaundryPopup from '../../components/LaundryPopup';
+import { fetchNearbyLaundry, LaundryShop } from '../../components/LaundryService';
+import { getMarketsNearby } from '../../components/MarketService';
 import PlaceDetailModal from '../../components/PlaceDetailModal';
+import { getAIRecommendations, getPreferenceBasedRecommendations, RecommendedPlace } from '../../components/RecommendationEngine';
 import TimePickerModal from '../../components/TimePickerModal';
 import TimerBanner from '../../components/TimerBanner';
 import { fetchCultureFacilities, fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
+import { LANG_SHORT, Language, useLanguage } from '../contexts/LanguageContext';
+
+const KAKAO_REST_KEY = '3625437720f404cc7bde32beeba08ed7';
 
 export default function MapScreen() {
-  const [shops, setShops] = useState([
-    { id: 1, name: '에코런드렛', lat: 37.5681, lng: 126.9944, washer: 3, dryer: 2, distance: '도보 10분' },
-    { id: 2, name: '더런드리', lat: 37.5650, lng: 127.0021, washer: 2, dryer: 3, distance: '도보 9분' },
+  const { language, setLanguage, T } = useLanguage();
+
+  const [shops, setShops] = useState<LaundryShop[]>([
+    { id: 1, name: '에코런드렛', lat: 37.5681, lng: 126.9944, washer: 3, dryer: 2, distance: '도보 10분', address: '서울 중구 을지로15길 32' },
+    { id: 2, name: '더런드리', lat: 37.5650, lng: 127.0021, washer: 2, dryer: 3, distance: '도보 9분', address: '서울 중구 동호로 343' },
   ]);
   const [selectedShop, setSelectedShop] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showCulture, setShowCulture] = useState(false);
+  const [cultureExpanded, setCultureExpanded] = useState(true);
   const [timerRunning, setTimerRunning] = useState(false);
   const [remainSeconds, setRemainSeconds] = useState(0);
-  const [currentLocation, setCurrentLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [culturePlaces, setCulturePlaces] = useState<TourPlace[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number; } | null>(null);
   const [tourPlaces, setTourPlaces] = useState<TourPlace[]>([]);
+  const [filteredPlaces, setFilteredPlaces] = useState<TourPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [showPlaceDetail, setShowPlaceDetail] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState<RecommendedPlace[]>([]);
+  const [preferenceRecommendations, setPreferenceRecommendations] = useState<RecommendedPlace[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<string>('전체');
 
+  const FILTERS = [
+    T.filterAll, T.filterLaundry, T.filterTourist,
+    T.filterFood, T.filterCulture, T.filterMarket, T.filterFestival
+  ];
+
+  // 타이머
   useEffect(() => {
     if (!timerRunning) return;
     if (remainSeconds <= 0) {
       setTimerRunning(false);
       setShowCulture(false);
-      alert('🧺 세탁이 완료되었습니다! 세탁물을 찾으러 가세요.');
+      alert(T.washDone);
       return;
     }
     const interval = setInterval(() => {
@@ -44,42 +62,89 @@ export default function MapScreen() {
     return () => clearInterval(interval);
   }, [timerRunning, remainSeconds]);
 
+  // 위치 + 세탁방
   useEffect(() => {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') return;
         const location = await Location.getCurrentPositionAsync({});
-        setCurrentLocation({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
+        const lat = location.coords.latitude;
+        const lng = location.coords.longitude;
+        setCurrentLocation({ latitude: lat, longitude: lng });
+        const nearbyShops = await fetchNearbyLaundry(lat, lng);
+        if (nearbyShops.length > 0) setShops(nearbyShops);
       } catch (error) {
         console.log('위치 가져오기 실패:', error);
       }
     })();
   }, []);
 
-  useEffect(() => {
-    const loadCulturePlaces = async () => {
-      const places = await fetchNearbyPlaces(37.5665, 126.9983, 3000);
-      setCulturePlaces(places);
-    };
-    loadCulturePlaces();
-  }, []);
-
+  // 관광지 데이터
   useEffect(() => {
     const loadTourPlaces = async () => {
-      const [attractions, restaurants, culture, facilities] = await Promise.all([
+      const [attractions, restaurants, culture, facilities, markets] = await Promise.all([
         fetchNearbyPlaces(37.5665, 126.9983, 3000, '12'),
         fetchNearbyPlaces(37.5665, 126.9983, 3000, '39'),
         fetchNearbyPlaces(37.5665, 126.9983, 3000, '14'),
         fetchCultureFacilities(37.5665, 126.9983, 5000),
+        getMarketsNearby(37.5665, 126.9983, 3000),
       ]);
-      setTourPlaces([...attractions, ...restaurants, ...culture, ...facilities]);
+      const all = [...attractions, ...restaurants, ...culture, ...facilities, ...markets];
+      setTourPlaces(all);
+      setFilteredPlaces(all);
     };
     loadTourPlaces();
   }, []);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setFilteredPlaces(tourPlaces);
+      setActiveFilter(T.filterAll);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(searchQuery)}&x=126.9983&y=37.5665&radius=3000&sort=distance`,
+        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
+      );
+      const data = await response.json();
+      const results = (data?.documents || []).map((item: any) => ({
+        id: item.id,
+        name: item.place_name,
+        category: item.category_group_name || '기타',
+        distance: item.distance ? `${item.distance}m` : '',
+        walkTime: item.distance ? `도보 ${Math.round(parseInt(item.distance) / 67)}분` : '',
+        description: item.road_address_name || item.address_name,
+        mapx: item.x,
+        mapy: item.y,
+        image: '',
+      }));
+      setFilteredPlaces(results);
+      setActiveFilter('검색결과');
+    } catch (error) {
+      console.log('검색 오류:', error);
+    }
+  };
+
+  const handleFilter = (filter: string) => {
+    setActiveFilter(filter);
+    setSearchQuery('');
+    if (filter === T.filterAll) {
+      setFilteredPlaces(tourPlaces);
+    } else if (filter === T.filterLaundry) {
+      setFilteredPlaces([]);
+    } else {
+      const categoryMap: Record<string, string> = {
+        [T.filterTourist]: '관광지',
+        [T.filterFood]: '음식점',
+        [T.filterCulture]: '문화시설',
+        [T.filterMarket]: '전통시장',
+        [T.filterFestival]: '축제/행사',
+      };
+      setFilteredPlaces(tourPlaces.filter((p) => p.category === (categoryMap[filter] || filter)));
+    }
+  };
 
   const handleShopSelect = (shop: any) => {
     const latestShop = shops.find((s) => s.id === shop.id);
@@ -92,7 +157,7 @@ export default function MapScreen() {
     setShowTimePicker(true);
   };
 
-  const handleTimeConfirm = (minutes: number, type: string) => {
+  const handleTimeConfirm = async (minutes: number, type: string) => {
     let updatedShop: any = null;
     setShops((prev) =>
       prev.map((shop) => {
@@ -113,24 +178,112 @@ export default function MapScreen() {
     setTimerRunning(true);
     setShowTimePicker(false);
     setShowCulture(true);
+    setCultureExpanded(true);
+
+    // 타이머 종료 시간 저장 (CultureScreen 공유용)
+    const endTime = Date.now() + minutes * 60 * 1000;
+    await AsyncStorage.setItem('timer_end_time', String(endTime));
+
+    setAiLoading(true);
+    try {
+      const userLat = currentLocation?.latitude ?? 37.5665;
+      const userLng = currentLocation?.longitude ?? 126.9983;
+      const prefRecs = await getPreferenceBasedRecommendations(tourPlaces, userLat, userLng, minutes);
+      setPreferenceRecommendations(prefRecs);
+      const saved = await AsyncStorage.getItem('user_preferences');
+      const preferences = saved ? JSON.parse(saved) : [];
+      const aiRecs = await getAIRecommendations(tourPlaces, userLat, userLng, minutes, preferences);
+      setAiRecommendations(aiRecs);
+    } catch (error) {
+      console.log('추천 오류:', error);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const minutes = Math.floor(remainSeconds / 60);
   const seconds = remainSeconds % 60;
 
+  const displayFilters = activeFilter === '검색결과'
+    ? [`🔍 ${searchQuery}`, ...FILTERS]
+    : FILTERS;
+
+  const showShops = activeFilter === T.filterAll || activeFilter === T.filterLaundry || activeFilter === '검색결과';
+
   return (
     <SafeAreaView style={styles.container}>
-      {timerRunning && (
-        <TimerBanner minutes={minutes} seconds={seconds} />
-      )}
+      {timerRunning && <TimerBanner minutes={minutes} seconds={seconds} />}
 
+      {/* 헤더 + 언어 선택 */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🗺️ Laundrip</Text>
+        <Text style={styles.headerTitle}>{T.header}</Text>
+        <View style={styles.langSwitcher}>
+          {(['한국어', 'English', '日本語', '中文'] as Language[]).map((lang) => (
+            <TouchableOpacity
+              key={lang}
+              style={[styles.langChip, language === lang && styles.langChipActive]}
+              onPress={() => setLanguage(lang)}
+            >
+              <Text style={[styles.langChipText, language === lang && styles.langChipTextActive]}>
+                {LANG_SHORT[lang]}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* 검색창 + 필터 */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={T.search}
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+            <Text style={styles.searchIcon}>🔍</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {displayFilters.map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.filterButton,
+                (activeFilter === filter || (filter.startsWith('🔍') && activeFilter === '검색결과')) && styles.filterButtonActive,
+              ]}
+              onPress={() => {
+                if (filter.startsWith('🔍')) {
+                  setActiveFilter('검색결과');
+                } else {
+                  handleFilter(filter);
+                }
+              }}
+            >
+              <Text style={[
+                styles.filterText,
+                (activeFilter === filter || (filter.startsWith('🔍') && activeFilter === '검색결과')) && styles.filterTextActive,
+              ]}>
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <View style={styles.mapContainer}>
         <KakaoMap
-          key={JSON.stringify(shops)}
+          key={JSON.stringify(shops) + activeFilter + searchQuery}
           onShopSelect={handleShopSelect}
           onPlaceSelect={(place) => {
             setSelectedPlace(place);
@@ -138,25 +291,66 @@ export default function MapScreen() {
           }}
           currentLocation={currentLocation}
           shops={shops}
-          tourPlaces={tourPlaces}
+          tourPlaces={filteredPlaces}
+          showShops={showShops}
         />
       </View>
 
+      {/* AI 추천 섹션 */}
       {showCulture && (
         <View style={styles.cultureSection}>
-          <Text style={styles.cultureTitle}>🎯 세탁 대기 중 이런 곳은 어떠세요?</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {culturePlaces.map((place) => (
-              <CultureCard
-                key={place.id}
-                place={place}
-                onPress={() => {
-                  setSelectedPlace(place);
-                  setShowPlaceDetail(true);
-                }}
-              />
-            ))}
-          </ScrollView>
+          <TouchableOpacity
+            style={styles.cultureSectionHeader}
+            onPress={() => setCultureExpanded(!cultureExpanded)}
+          >
+            <Text style={styles.cultureTitle}>
+              {cultureExpanded ? '🔽' : '🔼'} {T.aiTitle}
+            </Text>
+            <Text style={styles.cultureToggle}>
+              {cultureExpanded ? T.close : T.open}
+            </Text>
+          </TouchableOpacity>
+
+          {cultureExpanded && (
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.cultureScroll}>
+              <Text style={styles.cultureSectionTitle}>{T.aiTitle}</Text>
+              {preferenceRecommendations.length > 0 ? (
+                preferenceRecommendations.map((place) => (
+                  <CultureCard
+                    key={place.id}
+                    place={place}
+                    onPress={() => {
+                      setSelectedPlace(place);
+                      setShowPlaceDetail(true);
+                    }}
+                  />
+                ))
+              ) : (
+                <Text style={styles.emptyText}>{T.noResult}</Text>
+              )}
+
+              <Text style={[styles.cultureSectionTitle, { marginTop: 12 }]}>{T.aiSubTitle}</Text>
+              {aiLoading ? (
+                <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                  <ActivityIndicator color="#4FC3F7" />
+                  <Text style={styles.emptyText}>{T.aiLoading}</Text>
+                </View>
+              ) : aiRecommendations.length > 0 ? (
+                aiRecommendations.map((place) => (
+                  <CultureCard
+                    key={place.id}
+                    place={place}
+                    onPress={() => {
+                      setSelectedPlace(place);
+                      setShowPlaceDetail(true);
+                    }}
+                  />
+                ))
+              ) : (
+                <Text style={styles.emptyText}>{T.aiEmpty}</Text>
+              )}
+            </ScrollView>
+          )}
         </View>
       )}
 
@@ -166,13 +360,11 @@ export default function MapScreen() {
         onClose={() => setShowPopup(false)}
         onStartWash={handleStartWash}
       />
-
       <TimePickerModal
         visible={showTimePicker}
         onConfirm={handleTimeConfirm}
         onClose={() => setShowTimePicker(false)}
       />
-
       <PlaceDetailModal
         place={selectedPlace}
         visible={showPlaceDetail}
@@ -183,35 +375,71 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a2e',
-  },
+  container: { flex: 1, backgroundColor: '#1a1a2e' },
   header: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 4,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  langSwitcher: { flexDirection: 'row', gap: 4 },
+  langChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#2a2a3e',
+    borderWidth: 1,
+    borderColor: '#444',
   },
-  mapContainer: {
-    flex: 1,
-    margin: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
+  langChipActive: { backgroundColor: '#4FC3F7', borderColor: '#4FC3F7' },
+  langChipText: { color: '#888', fontSize: 10, fontWeight: '600' },
+  langChipTextActive: { color: '#1a1a2e' },
+  searchContainer: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  searchBar: {
+    flexDirection: 'row',
+    backgroundColor: '#2a2a3e',
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: 44,
   },
+  searchInput: { flex: 1, color: '#fff', fontSize: 14 },
+  searchButton: { padding: 4 },
+  searchIcon: { fontSize: 18 },
+  filterScroll: { maxHeight: 40 },
+  filterContainer: { gap: 8, alignItems: 'center' },
+  filterButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#2a2a3e',
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  filterButtonActive: { backgroundColor: '#4FC3F7', borderColor: '#4FC3F7' },
+  filterText: { color: '#888', fontSize: 12, fontWeight: '600' },
+  filterTextActive: { color: '#1a1a2e' },
+  mapContainer: { flex: 1, margin: 16, borderRadius: 16, overflow: 'hidden' },
   cultureSection: {
-    height: 280,
+    backgroundColor: '#1e1e2e',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
+    maxHeight: 320,
   },
-  cultureTitle: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 15,
-    marginBottom: 12,
+  cultureSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
+  cultureTitle: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  cultureToggle: { color: '#4FC3F7', fontSize: 12 },
+  cultureSectionTitle: { color: '#aaa', fontWeight: 'bold', fontSize: 13, marginBottom: 10 },
+  cultureScroll: { maxHeight: 260 },
+  emptyText: { color: '#888', textAlign: 'center', paddingVertical: 8, fontSize: 12 },
 });

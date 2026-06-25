@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Linking,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { fetchPlaceDetail } from './TourAPI';
 
@@ -33,22 +33,21 @@ export default function PlaceDetailModal({ place, visible, onClose }: PlaceDetai
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!place || !visible) return;
-    setDetail(null);
+  if (!place || !visible) return;
+  setDetail(null);
 
-    // cf_ 또는 market_ 접두사가 있으면 TourAPI 상세정보 없음
-    if (place.id.startsWith('cf_') || place.id.startsWith('market_') || place.id.startsWith('m_')) {
-      return;
-    }
+  // TourAPI contentId는 숫자로만 이루어진 문자열
+  const isTourAPIPlace = /^\d+$/.test(place.id);
+  if (!isTourAPIPlace) return;
 
-    const load = async () => {
-      setLoading(true);
-      const data = await fetchPlaceDetail(place.id);
-      setDetail(data);
-      setLoading(false);
-    };
-    load();
-  }, [place, visible]);
+  const load = async () => {
+    setLoading(true);
+    const data = await fetchPlaceDetail(place.id);
+    setDetail(data);
+    setLoading(false);
+  };
+  load();
+}, [place, visible]);
 
   if (!place) return null;
 

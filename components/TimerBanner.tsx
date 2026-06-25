@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useLanguage } from '../app/contexts/LanguageContext';
 
 interface TimerBannerProps {
   minutes: number;
@@ -6,11 +7,13 @@ interface TimerBannerProps {
 }
 
 export default function TimerBanner({ minutes, seconds }: TimerBannerProps) {
+  const { T } = useLanguage();
+
   return (
     <View style={styles.banner}>
       <Text style={styles.icon}>🧺</Text>
       <Text style={styles.text}>
-        세탁 완료까지{' '}
+        {T.timerBanner}{' '}
         <Text style={styles.time}>
           {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
         </Text>
@@ -29,16 +32,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  icon: {
-    fontSize: 18,
-  },
-  text: {
-    color: '#1a1a2e',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  time: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
+  icon: { fontSize: 18 },
+  text: { color: '#1a1a2e', fontWeight: '600', fontSize: 14 },
+  time: { fontWeight: 'bold', fontSize: 16 },
 });

@@ -1,16 +1,20 @@
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
+import { LanguageProvider } from './contexts/LanguageContext';
+import OnboardingScreen from './screens/OnboardingScreen';
 
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+  const timer = setTimeout(async () => {
+    setShowSplash(false);
+    setShowOnboarding(true); // 항상 온보딩 보여주기
+  }, 3000);
+  return () => clearTimeout(timer);
+}, []);
 
   if (showSplash) {
     return (
@@ -24,11 +28,21 @@ export default function RootLayout() {
     );
   }
 
+  if (showOnboarding) {
   return (
+    <LanguageProvider>
+      <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+    </LanguageProvider>
+  );
+}
+
+return (
+  <LanguageProvider>
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
     </Stack>
-  );
+  </LanguageProvider>
+);
 }
 
 const styles = StyleSheet.create({
