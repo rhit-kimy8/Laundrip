@@ -11,7 +11,7 @@ export default function RootLayout() {
   useEffect(() => {
   const timer = setTimeout(async () => {
     setShowSplash(false);
-    setShowOnboarding(true); // 항상 온보딩 보여주기
+    setShowOnboarding(true); 
   }, 3000);
   return () => clearTimeout(timer);
 }, []);

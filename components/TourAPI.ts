@@ -103,11 +103,13 @@ export const fetchFestivals = async (
 ): Promise<TourPlace[]> => {
   try {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const url = `${BASE_URL}/searchFestival2?serviceKey=${TOUR_API_KEY}&numOfRows=5&pageNo=1&MobileOS=ETC&MobileApp=LaundriP&_type=json&eventStartDate=${today}&mapX=${lng}&mapY=${lat}&arrange=E`;
+    const url = `${BASE_URL}/searchFestival2?serviceKey=${TOUR_API_KEY}&numOfRows=10&pageNo=1&MobileOS=ETC&MobileApp=LaundriP&_type=json&eventStartDate=${today}&arrange=E`;
+
     const response = await fetch(url);
     const text = await response.text();
-    if (!text.startsWith('{')) return [];
+    //console.log('축제 API 응답:', text.slice(0, 300));
 
+    if (!text.startsWith('{')) return [];
     const data = JSON.parse(text);
     const items = data?.response?.body?.items?.item || [];
 

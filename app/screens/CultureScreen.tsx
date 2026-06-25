@@ -20,24 +20,28 @@ export default function CultureScreen() {
   const [festivals, setFestivals] = useState<TourPlace[]>([]);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<string>('전체');
+  const [activeFilter, setActiveFilter] = useState<string>('');
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [showDetail, setShowDetail] = useState(false);
-
-  // 타이머 배너용
   const [remainSeconds, setRemainSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [shopName, setShopName] = useState('');
 
-  // 타이머 동기화
+  // activeFilter 언어 동기화
+  useEffect(() => {
+    setActiveFilter(T.filterAll);
+  }, [T.filterAll]);
+
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const saved = await AsyncStorage.getItem('timer_end_time');
+        const name = await AsyncStorage.getItem('timer_shop_name');
         if (saved) {
-          const endTime = parseInt(saved);
-          const remain = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+          const remain = Math.max(0, Math.floor((parseInt(saved) - Date.now()) / 1000));
           setRemainSeconds(remain);
           setTimerRunning(remain > 0);
+          setShopName(name || '');
         }
       } catch {}
     }, 1000);
@@ -96,7 +100,7 @@ export default function CultureScreen() {
 
   const showAttractions = activeFilter === T.filterAll || activeFilter === T.filterTourist;
   const showRestaurants = activeFilter === T.filterAll || activeFilter === T.filterFood;
-  const showCulture = activeFilter === T.filterAll || activeFilter === T.filterCulture;
+  const showCultureSection = activeFilter === T.filterAll || activeFilter === T.filterCulture;
   const showMarkets = activeFilter === T.filterAll || activeFilter === T.filterMarket;
   const showFestivals = activeFilter === T.filterAll || activeFilter === T.filterFestival;
 
@@ -105,16 +109,13 @@ export default function CultureScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 타이머 배너 */}
-      {timerRunning && <TimerBanner minutes={timerMinutes} seconds={timerSeconds} />}
+      {timerRunning && <TimerBanner minutes={timerMinutes} seconds={timerSeconds} shopName={shopName} />}
 
-      {/* 헤더 */}
       <View style={styles.header}>
         <Text style={styles.title}>{T.cultureTitle}</Text>
         <Text style={styles.subtitle}>{T.cultureSubtitle}</Text>
       </View>
 
-      {/* 필터 버튼 */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -149,7 +150,7 @@ export default function CultureScreen() {
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           {showAttractions && renderSection('🗺️ ' + T.filterTourist, attractions)}
           {showRestaurants && renderSection('🍜 ' + T.filterFood, restaurants)}
-          {showCulture && renderSection('🏛️ ' + T.filterCulture, culture)}
+          {showCultureSection && renderSection('🏛️ ' + T.filterCulture, culture)}
           {showMarkets && renderSection('🏪 ' + T.filterMarket, markets)}
           {showFestivals && renderSection('🎉 ' + T.filterFestival, festivals)}
         </ScrollView>
@@ -169,24 +170,21 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingBottom: 8 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
   subtitle: { color: '#888', fontSize: 14 },
-  filterScroll: {
-  maxHeight: 60,
-  minHeight: 60,
-},
-filterContainer: {
-  paddingHorizontal: 16,
-  gap: 8,
-  alignItems: 'center',
-  paddingVertical: 8, // 위아래 여백 추가
-},
-filterButton: {
-  paddingHorizontal: 14,
-  paddingVertical: 8,
-  borderRadius: 20,
-  backgroundColor: '#2a2a3e',
-  borderWidth: 1,
-  borderColor: '#444',
-},
+  filterScroll: { maxHeight: 60, minHeight: 60 },
+  filterContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#2a2a3e',
+    borderWidth: 1,
+    borderColor: '#444',
+  },
   filterButtonActive: { backgroundColor: '#4FC3F7', borderColor: '#4FC3F7' },
   filterText: { color: '#888', fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: '#1a1a2e' },

@@ -8,7 +8,8 @@ const generateMapHTML = (
   currentLocation: { latitude: number; longitude: number; } | null,
   shops: any[],
   tourPlaces: any[],
-  showShops: boolean
+  showShops: boolean,
+  activeShopId?: number
 ) => `
 <!DOCTYPE html>
 <html>
@@ -32,7 +33,6 @@ kakao.maps.load(function() {
   };
   var map = new kakao.maps.Map(container, options);
 
-  // 현재 위치 파란 점
   var userLocation = ${JSON.stringify(currentLocation)};
   if (userLocation) {
     var userOverlay = new kakao.maps.CustomOverlay({
@@ -47,17 +47,25 @@ kakao.maps.load(function() {
     userOverlay.setMap(map);
   }
 
-  // 세탁소 마커 (showShops가 true일 때만)
   var showShops = ${JSON.stringify(showShops)};
+  var activeShopId = ${JSON.stringify(activeShopId ?? null)};
+
   if (showShops) {
     var shops = ${JSON.stringify(shops)};
     shops.forEach(function(shop) {
+      var isActive = activeShopId !== null && shop.id === activeShopId;
+      var borderColor = isActive ? '#FFD700' : '#4FC3F7';
+      var bgColor = isActive ? '#2e2a00' : '#1e1e2e';
+      var statusText = isActive
+        ? '🔄 사용중'
+        : '세탁' + shop.washer + ' · 건조' + shop.dryer;
+
       var div = document.createElement('div');
       div.innerHTML =
-        '<div style="background:#1e1e2e;border:2px solid #4FC3F7;border-radius:12px;padding:6px 8px;text-align:center;cursor:pointer;width:70px;">' +
+        '<div style="background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:12px;padding:6px 8px;text-align:center;cursor:pointer;width:70px;">' +
         '<div style="font-size:16px;">🧺</div>' +
         '<div style="color:white;font-size:9px;font-weight:bold;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px;margin:0 auto;">' + shop.name + '</div>' +
-        '<div style="color:#4FC3F7;font-size:8px;margin-top:2px;text-align:center;">세탁' + shop.washer + ' · 건조' + shop.dryer + '</div>' +
+        '<div style="color:' + borderColor + ';font-size:8px;margin-top:2px;text-align:center;">' + statusText + '</div>' +
         '</div>';
 
       div.addEventListener('click', function() {
@@ -76,7 +84,6 @@ kakao.maps.load(function() {
     });
   }
 
-  // 관광지/음식점/문화시설 마커
   var categoryIcon = {
     '관광지': '🗺️',
     '음식점': '🍜',
@@ -91,7 +98,6 @@ kakao.maps.load(function() {
   var tourPlaces = ${JSON.stringify(tourPlaces)};
   tourPlaces.forEach(function(place) {
     if (!place.mapx || !place.mapy) return;
-
     var icon = categoryIcon[place.category] || '📍';
     var div = document.createElement('div');
     div.innerHTML =
@@ -114,7 +120,6 @@ kakao.maps.load(function() {
     });
     overlay.setMap(map);
   });
-
 });
 </script>
 </body>
@@ -123,6 +128,7 @@ kakao.maps.load(function() {
 
 interface KakaoMapProps {
   showShops?: boolean;
+  activeShopId?: number;
   onShopSelect: (shop: any) => void;
   onPlaceSelect: (place: any) => void;
   currentLocation: { latitude: number; longitude: number; } | null;
@@ -144,7 +150,15 @@ interface KakaoMapProps {
   }[];
 }
 
-export default function KakaoMap({ onShopSelect, onPlaceSelect, currentLocation, shops, tourPlaces, showShops = true }: KakaoMapProps) {
+export default function KakaoMap({
+  onShopSelect,
+  onPlaceSelect,
+  currentLocation,
+  shops,
+  tourPlaces,
+  showShops = true,
+  activeShopId,
+}: KakaoMapProps) {
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -162,7 +176,7 @@ export default function KakaoMap({ onShopSelect, onPlaceSelect, currentLocation,
     <View style={styles.container}>
       <WebView
         source={{
-          html: generateMapHTML(KAKAO_MAP_KEY, currentLocation, shops, tourPlaces, showShops),
+          html: generateMapHTML(KAKAO_MAP_KEY, currentLocation, shops, tourPlaces, showShops, activeShopId),
         }}
         style={styles.webview}
         onMessage={handleMessage}

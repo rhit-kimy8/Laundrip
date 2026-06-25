@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const GEMINI_KEY = process.env.EXPO_PUBLIC_GEMINI_KEY || 'AQ.Ab8RN6Kzci2ry4MoExUH6dr-ZSz66aRpc8mNI5Gv5xL6yqoHYw';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-// 선호도 → 카테고리 매핑
+// 선호도 → 카테고리 mapping
 const PREFERENCE_CATEGORY_MAP: { [key: string]: string[] } = {
   history: ['관광지', '문화시설', '전통시장'],
   food: ['음식점', '전통시장'],
@@ -202,7 +202,7 @@ export const getPreferenceBasedRecommendations = async (
       };
     })
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+    .slice(0, 5);
 };
 
 // Gemini AI 추천

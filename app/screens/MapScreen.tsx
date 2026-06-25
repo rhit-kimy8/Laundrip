@@ -12,7 +12,7 @@ import PlaceDetailModal from '../../components/PlaceDetailModal';
 import { getAIRecommendations, getPreferenceBasedRecommendations, RecommendedPlace } from '../../components/RecommendationEngine';
 import TimePickerModal from '../../components/TimePickerModal';
 import TimerBanner from '../../components/TimerBanner';
-import { fetchCultureFacilities, fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
+import { fetchCultureFacilities, fetchFestivals, fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
 import { LANG_SHORT, Language, useLanguage } from '../contexts/LanguageContext';
 
 const KAKAO_REST_KEY = '3625437720f404cc7bde32beeba08ed7';
@@ -25,6 +25,8 @@ export default function MapScreen() {
     { id: 2, name: '더런드리', lat: 37.5650, lng: 127.0021, washer: 2, dryer: 3, distance: '도보 9분', address: '서울 중구 동호로 343' },
   ]);
   const [selectedShop, setSelectedShop] = useState<any>(null);
+  const [activeShopId, setActiveShopId] = useState<number | undefined>(undefined);
+  const [activeShopName, setActiveShopName] = useState<string>('');
   const [showPopup, setShowPopup] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showCulture, setShowCulture] = useState(false);
@@ -39,6 +41,7 @@ export default function MapScreen() {
   const [aiRecommendations, setAiRecommendations] = useState<RecommendedPlace[]>([]);
   const [preferenceRecommendations, setPreferenceRecommendations] = useState<RecommendedPlace[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiUnavailable, setAiUnavailable] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('전체');
 
@@ -47,12 +50,12 @@ export default function MapScreen() {
     T.filterFood, T.filterCulture, T.filterMarket, T.filterFestival
   ];
 
-  // 타이머
   useEffect(() => {
     if (!timerRunning) return;
     if (remainSeconds <= 0) {
       setTimerRunning(false);
       setShowCulture(false);
+      setActiveShopId(undefined);
       alert(T.washDone);
       return;
     }
@@ -62,7 +65,6 @@ export default function MapScreen() {
     return () => clearInterval(interval);
   }, [timerRunning, remainSeconds]);
 
-  // 위치 + 세탁방
   useEffect(() => {
     (async () => {
       try {
@@ -80,17 +82,17 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // 관광지 데이터
   useEffect(() => {
     const loadTourPlaces = async () => {
-      const [attractions, restaurants, culture, facilities, markets] = await Promise.all([
+      const [attractions, restaurants, culture, facilities, markets, festivals] = await Promise.all([
         fetchNearbyPlaces(37.5665, 126.9983, 3000, '12'),
         fetchNearbyPlaces(37.5665, 126.9983, 3000, '39'),
         fetchNearbyPlaces(37.5665, 126.9983, 3000, '14'),
         fetchCultureFacilities(37.5665, 126.9983, 5000),
         getMarketsNearby(37.5665, 126.9983, 3000),
+        fetchFestivals(37.5665, 126.9983),
       ]);
-      const all = [...attractions, ...restaurants, ...culture, ...facilities, ...markets];
+      const all = [...attractions, ...restaurants, ...culture, ...facilities, ...markets, ...festivals];
       setTourPlaces(all);
       setFilteredPlaces(all);
     };
@@ -158,10 +160,16 @@ export default function MapScreen() {
   };
 
   const handleTimeConfirm = async (minutes: number, type: string) => {
+    const shopName = selectedShop?.name || '';
+    const shopId = selectedShop?.id;
+    setActiveShopName(shopName);
+    setActiveShopId(shopId);
+    await AsyncStorage.setItem('timer_shop_name', shopName);
+
     let updatedShop: any = null;
     setShops((prev) =>
       prev.map((shop) => {
-        if (shop.id === selectedShop?.id) {
+        if (shop.id === shopId) {
           const updated = {
             ...shop,
             washer: type === '세탁기' ? Math.max(0, shop.washer - 1) : shop.washer,
@@ -180,11 +188,11 @@ export default function MapScreen() {
     setShowCulture(true);
     setCultureExpanded(true);
 
-    // 타이머 종료 시간 저장 (CultureScreen 공유용)
     const endTime = Date.now() + minutes * 60 * 1000;
     await AsyncStorage.setItem('timer_end_time', String(endTime));
 
     setAiLoading(true);
+    setAiUnavailable(false);
     try {
       const userLat = currentLocation?.latitude ?? 37.5665;
       const userLng = currentLocation?.longitude ?? 126.9983;
@@ -194,8 +202,11 @@ export default function MapScreen() {
       const preferences = saved ? JSON.parse(saved) : [];
       const aiRecs = await getAIRecommendations(tourPlaces, userLat, userLng, minutes, preferences);
       setAiRecommendations(aiRecs);
-    } catch (error) {
+    } catch (error: any) {
       console.log('추천 오류:', error);
+      if (error?.code === 429 || String(error).includes('429')) {
+        setAiUnavailable(true);
+      }
     } finally {
       setAiLoading(false);
     }
@@ -212,9 +223,8 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {timerRunning && <TimerBanner minutes={minutes} seconds={seconds} />}
+      {timerRunning && <TimerBanner minutes={minutes} seconds={seconds} shopName={activeShopName} />}
 
-      {/* 헤더 + 언어 선택 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{T.header}</Text>
         <View style={styles.langSwitcher}>
@@ -232,7 +242,6 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* 검색창 + 필터 */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <TextInput
@@ -283,7 +292,7 @@ export default function MapScreen() {
 
       <View style={styles.mapContainer}>
         <KakaoMap
-          key={JSON.stringify(shops) + activeFilter + searchQuery}
+          key={JSON.stringify(shops) + activeFilter + searchQuery + activeShopId}
           onShopSelect={handleShopSelect}
           onPlaceSelect={(place) => {
             setSelectedPlace(place);
@@ -293,10 +302,10 @@ export default function MapScreen() {
           shops={shops}
           tourPlaces={filteredPlaces}
           showShops={showShops}
+          activeShopId={activeShopId}
         />
       </View>
 
-      {/* AI 추천 섹션 */}
       {showCulture && (
         <View style={styles.cultureSection}>
           <TouchableOpacity
@@ -347,7 +356,14 @@ export default function MapScreen() {
                   />
                 ))
               ) : (
-                <Text style={styles.emptyText}>{T.aiEmpty}</Text>
+                <View style={styles.aiUnavailableBox}>
+                  <Text style={styles.aiUnavailableIcon}>🤖</Text>
+                  <Text style={styles.aiUnavailableText}>
+                    {aiUnavailable
+                      ? 'AI 추천이 일시적으로\n이용 불가합니다 ✨'
+                      : T.aiEmpty}
+                  </Text>
+                </View>
               )}
             </ScrollView>
           )}
@@ -442,4 +458,13 @@ const styles = StyleSheet.create({
   cultureSectionTitle: { color: '#aaa', fontWeight: 'bold', fontSize: 13, marginBottom: 10 },
   cultureScroll: { maxHeight: 260 },
   emptyText: { color: '#888', textAlign: 'center', paddingVertical: 8, fontSize: 12 },
+  aiUnavailableBox: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#2a2a3e',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  aiUnavailableIcon: { fontSize: 32, marginBottom: 8 },
+  aiUnavailableText: { color: '#aaa', fontSize: 13, textAlign: 'center', lineHeight: 20 },
 });

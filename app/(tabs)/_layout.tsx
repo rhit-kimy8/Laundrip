@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function TabLayout() {
+  const { T } = useLanguage();
+
   return (
     <Tabs
       screenOptions={{
@@ -17,7 +20,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: '지도',
+          title: T.filterAll === '전체' ? '지도' : 
+                 T.filterAll === 'All' ? 'Map' :
+                 T.filterAll === '全て' ? '地図' : '地图',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map" size={size} color={color} />
           ),
@@ -26,7 +31,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: '문화콘텐츠',
+          title: T.filterAll === '전체' ? '문화콘텐츠' :
+                 T.filterAll === 'All' ? 'Culture' :
+                 T.filterAll === '全て' ? '文化' : '文化',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="compass" size={size} color={color} />
           ),

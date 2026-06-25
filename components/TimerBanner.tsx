@@ -4,20 +4,26 @@ import { useLanguage } from '../app/contexts/LanguageContext';
 interface TimerBannerProps {
   minutes: number;
   seconds: number;
+  shopName?: string;
 }
 
-export default function TimerBanner({ minutes, seconds }: TimerBannerProps) {
+export default function TimerBanner({ minutes, seconds, shopName }: TimerBannerProps) {
   const { T } = useLanguage();
 
   return (
     <View style={styles.banner}>
       <Text style={styles.icon}>🧺</Text>
-      <Text style={styles.text}>
-        {T.timerBanner}{' '}
-        <Text style={styles.time}>
-          {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+      <View>
+        {shopName && (
+          <Text style={styles.shopName}>{shopName}</Text>
+        )}
+        <Text style={styles.text}>
+          {T.timerBanner}{' '}
+          <Text style={styles.time}>
+            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+          </Text>
         </Text>
-      </Text>
+      </View>
     </View>
   );
 }
@@ -33,6 +39,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   icon: { fontSize: 18 },
+  shopName: {
+    color: '#1a1a2e',
+    fontSize: 11,
+    fontWeight: '600',
+    opacity: 0.8,
+  },
   text: { color: '#1a1a2e', fontWeight: '600', fontSize: 14 },
   time: { fontWeight: 'bold', fontSize: 16 },
 });
