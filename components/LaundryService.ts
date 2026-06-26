@@ -17,15 +17,11 @@ export const fetchNearbyLaundry = async (
 ): Promise<LaundryShop[]> => {
   try {
     const keywords = ['코인세탁', '빨래방', 'laundry', '세탁방'];
-    
-    // 을지로 4가 기준 고정 (중구+종로구 커버)
-    const searchLat = 37.5665;
-    const searchLng = 126.9983;
-    
+
     const results = await Promise.all(
       keywords.map((keyword) =>
         fetch(
-          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(keyword)}&x=${searchLng}&y=${searchLat}&radius=3000&sort=distance`,
+          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(keyword)}&x=${lng}&y=${lat}&radius=3000&sort=distance`,
           { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
         ).then((res) => res.json())
       )
