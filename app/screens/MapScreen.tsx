@@ -9,7 +9,7 @@ import LaundryPopup from '../../components/LaundryPopup';
 import { fetchNearbyLaundry, LaundryShop } from '../../components/LaundryService';
 import { getMarketsNearby } from '../../components/MarketService';
 import PlaceDetailModal from '../../components/PlaceDetailModal';
-import { getAIRecommendations, getPreferenceBasedRecommendations, RecommendedPlace } from '../../components/RecommendationEngine';
+import { getPreferenceBasedRecommendations, RecommendedPlace } from '../../components/RecommendationEngine';
 import TimePickerModal from '../../components/TimePickerModal';
 import TimerBanner from '../../components/TimerBanner';
 import { fetchCultureFacilities, fetchFestivals, fetchNearbyPlaces, TourPlace } from '../../components/TourAPI';
@@ -228,20 +228,18 @@ export default function MapScreen() {
       const userLng = currentLocation?.longitude ?? 126.9983;
       const prefRecs = await getPreferenceBasedRecommendations(tourPlaces, userLat, userLng, minutes);
       setPreferenceRecommendations(prefRecs);
-      const saved = await AsyncStorage.getItem('user_preferences');
-      const preferences = saved ? JSON.parse(saved) : [];
-      const aiRecs = await getAIRecommendations(tourPlaces, userLat, userLng, minutes, preferences);
-      setAiRecommendations(aiRecs);
+      // TODO: Gemini AI 추천 임시 비활성화 (안정화 후 재활성화)
+      // const saved = await AsyncStorage.getItem('user_preferences');
+      // const preferences = saved ? JSON.parse(saved) : [];
+      // const aiRecs = await getAIRecommendations(tourPlaces, userLat, userLng, minutes, preferences);
+      // setAiRecommendations(aiRecs);
+      setAiRecommendations(prefRecs);
     } catch (error: any) {
-      const userLat = currentLocation?.latitude ?? 37.5665;
-      const userLng = currentLocation?.longitude ?? 126.9983;
       console.log('추천 오류:', error);
       setAiUnavailable(true);
-      const fallback = await getPreferenceBasedRecommendations(tourPlaces, userLat, userLng, minutes);
-      setAiRecommendations(fallback);
-} finally {
-  setAiLoading(false);
-}
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const minutes = Math.floor(remainSeconds / 60);
