@@ -88,7 +88,7 @@ export const fetchNearbyPlaces = async (
       description: item.addr1 || '상세 정보 없음',
       mapx: item.mapx,
       mapy: item.mapy,
-      image: item.firstimage || '',
+      image: (item.firstimage || '').replace('http://', 'https://'),
     }));
   } catch (error) {
     console.log('TourAPI 오류:', error);
@@ -122,7 +122,7 @@ export const fetchFestivals = async (
       description: item.addr1 || '상세 정보 없음',
       mapx: item.mapx,
       mapy: item.mapy,
-      image: item.firstimage || '',
+      image: (item.firstimage || '').replace('http://', 'https://'),
     }));
   } catch (error) {
     console.log('축제 API 오류:', error);
