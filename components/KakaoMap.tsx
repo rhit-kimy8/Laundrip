@@ -201,6 +201,7 @@ export default function KakaoMap({
       <WebView
         source={{
           html: generateMapHTML(KAKAO_MAP_KEY, currentLocation, shops, tourPlaces, showShops, activeShopId),
+          baseUrl: 'https://dapi.kakao.com',
         }}
         style={styles.webview}
         onMessage={handleMessage}
@@ -208,6 +209,7 @@ export default function KakaoMap({
         domStorageEnabled
         mixedContentMode="always"
         originWhitelist={['*']}
+        allowsInlineMediaPlayback
         onError={(e) => console.log('WEBVIEW ERROR', e.nativeEvent)}
         onHttpError={(e) => console.log('HTTP ERROR', e.nativeEvent)}
       />
