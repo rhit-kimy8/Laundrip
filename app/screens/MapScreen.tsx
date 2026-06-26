@@ -20,10 +20,7 @@ const KAKAO_REST_KEY = '3625437720f404cc7bde32beeba08ed7';
 export default function MapScreen() {
   const { language, setLanguage, T } = useLanguage();
 
-  const [shops, setShops] = useState<LaundryShop[]>([
-    { id: 1, name: '에코런드렛', lat: 37.5681, lng: 126.9944, washer: 3, dryer: 2, distance: '도보 10분', address: '서울 중구 을지로15길 32' },
-    { id: 2, name: '더런드리', lat: 37.5650, lng: 127.0021, washer: 2, dryer: 3, distance: '도보 9분', address: '서울 중구 동호로 343' },
-  ]);
+  const [shops, setShops] = useState<LaundryShop[]>([]);
   const [selectedShop, setSelectedShop] = useState<any>(null);
   const [activeShopId, setActiveShopId] = useState<number | undefined>(undefined);
   const [activeShopName, setActiveShopName] = useState<string>('');
@@ -113,7 +110,7 @@ export default function MapScreen() {
 
       try {
         const nearbyShops = await fetchNearbyLaundry(lat, lng);
-        if (nearbyShops.length > 0) setShops(nearbyShops);
+        setShops(nearbyShops);
 
         const [attractions, restaurants, culture, facilities, markets, festivals] = await Promise.all([
           fetchNearbyPlaces(lat, lng, 2000, '12'),
