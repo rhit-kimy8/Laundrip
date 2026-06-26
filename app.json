@@ -7,12 +7,12 @@
     "icon": "./assets/images/icon.png",
     "scheme": "laundrip",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "newArchEnabled": false,
+      "newArchEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
